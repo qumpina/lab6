@@ -2,7 +2,7 @@
 // config.php
 define('DB_HOST', 'localhost');
 define('DB_USER', 'u82092');
-define('DB_PASS', '');
+define('DB_PASS', '1557612');
 define('DB_NAME', 'u82092');
 
 try {
