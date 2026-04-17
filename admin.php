@@ -1,4 +1,8 @@
 <?php
+// admin.php - Панель администратора с HTTP-авторизацией
+require_once 'config.php';
+
+// HTTP-авторизация (простая версия, как в test_auth.php)
 if (empty($_SERVER['PHP_AUTH_USER']) || 
     empty($_SERVER['PHP_AUTH_PW']) || 
     $_SERVER['PHP_AUTH_USER'] != 'admin' || 
@@ -6,18 +10,27 @@ if (empty($_SERVER['PHP_AUTH_USER']) ||
     
     header('HTTP/1.1 401 Unauthorized');
     header('WWW-Authenticate: Basic realm="Admin Panel - Lab6"');
-    echo '<h1>401 Требуется авторизация</h1>';
-    echo '<p>Логин: <strong>admin</strong><br>Пароль: <strong>admin123</strong></p>';
+    echo '<!DOCTYPE html>
+    <html>
+    <head><title>401 Требуется авторизация</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
+        .error { background: #fee; color: #c33; padding: 20px; border-radius: 8px; display: inline-block; }
+    </style>
+    </head>
+    <body>
+        <div class="error">
+            <h1>401 Требуется авторизация</h1>
+            <p>Логин: <strong>admin</strong></p>
+            <p>Пароль: <strong>admin123</strong></p>
+        </div>
+    </body>
+    </html>';
     exit();
 }
 
-echo "Вы успешно авторизовались!<br>";
-require_once 'config.php';
-// admin.php - Панель администратора
-require_once 'config.php';
-
-// Проверка HTTP-авторизации
-authenticateAdmin($pdo);
+// Если дошли сюда - авторизация успешна
+// echo "Авторизация успешна!<br>"; // можно раскомментировать для проверки
 
 // Обработка действий
 $message = '';
@@ -38,8 +51,6 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 // Получение всех заявок
 $applications = getAllApplications($pdo);
 $total_count = count($applications);
-
-// Получение статистики по языкам
 $language_stats = getLanguageStats($pdo);
 ?>
 <!DOCTYPE html>
@@ -225,15 +236,6 @@ $language_stats = getLanguageStats($pdo);
             background: #c82333;
         }
         
-        .btn-view {
-            background: #17a2b8;
-            color: white;
-        }
-        
-        .btn-view:hover {
-            background: #138496;
-        }
-        
         .back-link {
             display: inline-block;
             margin-top: 20px;
@@ -343,7 +345,7 @@ $language_stats = getLanguageStats($pdo);
                                 <td><?php echo date('d.m.Y', strtotime($app['birth_date'])); ?></td>
                                 <td>
                                     <?php 
-                                    $genders = ['male' => 'Мужской', 'female' => 'Женский'];
+                                    $genders = ['male' => 'Мужской', 'female' => 'Женский', 'other' => 'Другой'];
                                     echo $genders[$app['gender']] ?? $app['gender'];
                                     ?>
                                 </td>
