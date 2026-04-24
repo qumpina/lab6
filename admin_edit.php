@@ -2,13 +2,30 @@
 // admin_edit.php - Редактирование записи администратором
 require_once 'config.php';
 
-// Проверка HTTP-авторизации
-authenticateAdmin($pdo);
-
-$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-if (!$id) {
-    header('Location: admin.php');
-    exit;
+if (empty($_SERVER['PHP_AUTH_USER']) || 
+    empty($_SERVER['PHP_AUTH_PW']) || 
+    $_SERVER['PHP_AUTH_USER'] != 'admin' || 
+    $_SERVER['PHP_AUTH_PW'] != 'admin123') {
+    
+    header('HTTP/1.1 401 Unauthorized');
+    header('WWW-Authenticate: Basic realm="Admin Panel - Lab6"');
+    echo '<!DOCTYPE html>
+    <html>
+    <head><title>401 Требуется авторизация</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
+        .error { background: #fee; color: #c33; padding: 20px; border-radius: 8px; display: inline-block; }
+    </style>
+    </head>
+    <body>
+        <div class="error">
+            <h1>401 Требуется авторизация</h1>
+            <p>Логин: <strong>admin</strong></p>
+            <p>Пароль: <strong>admin123</strong></p>
+        </div>
+    </body>
+    </html>';
+    exit();
 }
 
 // Получение данных заявки
