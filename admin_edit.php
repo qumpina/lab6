@@ -2,60 +2,7 @@
 // admin_edit.php - Редактирование записи администратором
 require_once 'config.php';
 
-// Функция для HTTP-авторизации
-function authenticateAdmin($pdo) {
-    // Проверяем, есть ли данные авторизации
-    if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])) {
-        sendAuthHeaders();
-        exit();
-    }
-    
-    $login = $_SERVER['PHP_AUTH_USER'];
-    $password = $_SERVER['PHP_AUTH_PW'];
-    
-    // Проверка через базу данных (если таблица admin_users существует)
-    try {
-        $stmt = $pdo->prepare("SELECT password_hash FROM admin_users WHERE login = ?");
-        $stmt->execute([$login]);
-        $admin = $stmt->fetch();
-        
-        if ($admin && password_verify($password, $admin['password_hash'])) {
-            return true;
-        }
-    } catch (PDOException $e) {
-        // Если таблицы нет, используем жестко заданные данные
-        if ($login === 'admin' && $password === 'admin123') {
-            return true;
-        }
-    }
-    
-    // Неверные данные - повторный запрос
-    sendAuthHeaders();
-    echo '<!DOCTYPE html>
-    <html>
-    <head><title>401 Требуется авторизация</title>
-    <style>
-        body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
-        .error { background: #fee; color: #c33; padding: 20px; border-radius: 8px; display: inline-block; }
-    </style>
-    </head>
-    <body>
-        <div class="error">
-            <h1>401 Требуется авторизация</h1>
-            <p>Неверный логин или пароль</p>
-            <p>Используйте логин: <strong>admin</strong> и пароль: <strong>admin123</strong></p>
-        </div>
-    </body>
-    </html>';
-    exit();
-}
-
-function sendAuthHeaders() {
-    header('HTTP/1.1 401 Unauthorized');
-    header('WWW-Authenticate: Basic realm="Admin Panel - Lab6"');
-}
-
-// Проверка HTTP-авторизации
+// Проверка HTTP-авторизации (функция уже определена в config.php)
 authenticateAdmin($pdo);
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
@@ -114,9 +61,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($birth_date)) {
         $errors[] = "Дата рождения обязательна";
+    } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth_date)) {
+        $errors[] = "Неверный формат даты";
     }
     
-    if (!in_array($gender, ['male', 'female'])) {
+    if (!in_array($gender, ['male', 'female', 'other'])) {
         $errors[] = "Выберите пол";
     }
     
