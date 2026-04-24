@@ -2,13 +2,35 @@
 // admin_edit.php - Редактирование записи администратором
 require_once 'config.php';
 
-if (empty($_SERVER['PHP_AUTH_USER']) || 
-    empty($_SERVER['PHP_AUTH_PW']) || 
-    $_SERVER['PHP_AUTH_USER'] != 'admin' || 
-    $_SERVER['PHP_AUTH_PW'] != 'admin123') {
+// Функция для HTTP-авторизации
+function authenticateAdmin($pdo) {
+    // Проверяем, есть ли данные авторизации
+    if (!isset($_SERVER['PHP_AUTH_USER']) || !isset($_SERVER['PHP_AUTH_PW'])) {
+        sendAuthHeaders();
+        exit();
+    }
     
-    header('HTTP/1.1 401 Unauthorized');
-    header('WWW-Authenticate: Basic realm="Admin Panel - Lab6"');
+    $login = $_SERVER['PHP_AUTH_USER'];
+    $password = $_SERVER['PHP_AUTH_PW'];
+    
+    // Проверка через базу данных (если таблица admin_users существует)
+    try {
+        $stmt = $pdo->prepare("SELECT password_hash FROM admin_users WHERE login = ?");
+        $stmt->execute([$login]);
+        $admin = $stmt->fetch();
+        
+        if ($admin && password_verify($password, $admin['password_hash'])) {
+            return true;
+        }
+    } catch (PDOException $e) {
+        // Если таблицы нет, используем жестко заданные данные
+        if ($login === 'admin' && $password === 'admin123') {
+            return true;
+        }
+    }
+    
+    // Неверные данные - повторный запрос
+    sendAuthHeaders();
     echo '<!DOCTYPE html>
     <html>
     <head><title>401 Требуется авторизация</title>
@@ -20,12 +42,26 @@ if (empty($_SERVER['PHP_AUTH_USER']) ||
     <body>
         <div class="error">
             <h1>401 Требуется авторизация</h1>
-            <p>Логин: <strong>admin</strong></p>
-            <p>Пароль: <strong>admin123</strong></p>
+            <p>Неверный логин или пароль</p>
+            <p>Используйте логин: <strong>admin</strong> и пароль: <strong>admin123</strong></p>
         </div>
     </body>
     </html>';
     exit();
+}
+
+function sendAuthHeaders() {
+    header('HTTP/1.1 401 Unauthorized');
+    header('WWW-Authenticate: Basic realm="Admin Panel - Lab6"');
+}
+
+// Проверка HTTP-авторизации
+authenticateAdmin($pdo);
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if (!$id) {
+    header('Location: admin.php');
+    exit;
 }
 
 // Получение данных заявки
@@ -80,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Дата рождения обязательна";
     }
     
-    if (!in_array($gender, ['male', 'female', 'other'])) {
+    if (!in_array($gender, ['male', 'female'])) {
         $errors[] = "Выберите пол";
     }
     
@@ -163,11 +199,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
         
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
             padding-bottom: 15px;
             border-bottom: 2px solid #667eea;
+        }
+        
+        .admin-header h1 {
+            color: #333;
+            margin: 0;
+            padding: 0;
+            border: none;
+        }
+        
+        .admin-info {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .admin-info strong {
+            color: #667eea;
         }
         
         .subtitle {
@@ -312,11 +366,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <div class="container">
-        <h1>✏️ Редактирование записи #<?php echo $id; ?></h1>
+        <div class="admin-header">
+            <h1>✏️ Редактирование записи #<?php echo $id; ?></h1>
+            <div class="admin-info">
+                Вы вошли как: <strong><?php echo htmlspecialchars($_SERVER['PHP_AUTH_USER']); ?></strong>
+            </div>
+        </div>
         <div class="subtitle">Редактирование данных пользователя</div>
         
         <?php if ($success): ?>
-            <div class="message success"><?php echo $success; ?></div>
+            <div class="message success"><?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
         
         <?php if ($error): ?>
@@ -361,11 +420,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                <?php echo $application['gender'] === 'female' ? 'checked' : ''; ?>>
                         <label>Женский</label>
                     </div>
-                    <div>
-                        <input type="radio" name="gender" value="other" 
-                               <?php echo $application['gender'] === 'other' ? 'checked' : ''; ?>>
-                        <label>Другой</label>
-                    </div>
                 </div>
             </div>
             
@@ -373,9 +427,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <label for="languages" class="required">Любимые языки программирования:</label>
                 <select id="languages" name="languages[]" multiple size="6" required>
                     <?php foreach ($all_languages as $lang): ?>
-                        <option value="<?php echo $lang['name']; ?>" 
+                        <option value="<?php echo htmlspecialchars($lang['name']); ?>" 
                             <?php echo in_array($lang['name'], $user_languages) ? 'selected' : ''; ?>>
-                            <?php echo $lang['name']; ?>
+                            <?php echo htmlspecialchars($lang['name']); ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
